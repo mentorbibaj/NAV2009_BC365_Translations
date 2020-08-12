@@ -27,6 +27,8 @@ foreach($xmlDataItems as $xDI)
 	if ($r != "")
 	{
 		$child = $xDI->addChild("target", $r);
+	}else{
+		$child = $xDI->addChild("target", "");
 	}
 }
 
