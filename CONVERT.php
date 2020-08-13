@@ -4,8 +4,8 @@ require_once('config.php');
 
 //=============================================
 //CONFIG
-$xml_file_input  = "Purchase Reports Default.g.xlf";
-$xml_file_output = "Purchase Reports Default_CH.g.xlf";
+$xml_file_input  = "Sales Reporting.g.xlf";
+$xml_file_output = "Sales Reporting_CH.g.xlf";
 $target_language = "de-CH";
 //=============================================
 
@@ -27,6 +27,8 @@ foreach($xmlDataItems as $xDI)
 	if ($r != "")
 	{
 		$child = $xDI->addChild("target", $r);
+	}else{
+		$child = $xDI->addChild("target", "");
 	}
 }
 

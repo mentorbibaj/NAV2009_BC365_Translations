@@ -1,82 +1,83 @@
 <?php
 
-require_once('config.php');
-
-//=============================================
-//CONFIG
-$xml_scrap_translated_ch_file = "file.xml";
-$xml_scrap_from_nav_2009_file = "nav2009_to_scrap.xml";
-//=============================================
-
-
-//=============================================
-//FUNCTIONS
-//scrap_translated_ch_file($conn,$xml_scrap_translated_ch_file);
-scrap_from_nav_2009_file($conn,$xml_scrap_from_nav_2009_file);//te rregullohet edhe per file-at e vjeter nga nav 2009
-echo "Done scrapping!";
-//=============================================
-
-$conn->close();
-
-
-function scrap_from_nav_2009_file($conn, $file){
-	$xml          = simplexml_load_file($file) or die("Error: Cannot create object");
-	$xmlDataItems = $xml->Report->DataItems->DataItem;
-
-	foreach($xmlDataItems as $xDI)
+class Scrap
+{
+	private $conn;
+	private $file; 
+	function __construct($conn, $file)
 	{
-		$b = $xDI->Sections->Section;
-		foreach ($b as $val) {
-			$c = $val->Controls->Control;
-			if (is_array($c) || is_object($c)){
-				foreach ($c as $val1) {
+		$this->conn = $conn;
+		$this->file = $file;
+	}
 
-					$d = $val1->Properties->CaptionML;
-					if(strpos($d, 'DEU=') !== false && strpos($d, 'ENU=') !== false){
-						$langs = explode(";",$d);
-						$en_lang = "";
-						$de_lang = "";
-						foreach ($langs as $language) {
-							$text = trim($language);
-							if(strpos($text, 'DEU=') !== false){
-								$de_lang = substr($text, 4, strlen($text) - 4);
-							}else if(strpos($text, 'ENU=') !== false){
-								$en_lang = substr($text, 4, strlen($text) - 4);
+	function scrap_from_nav_2009_file(){
+		$xml          = simplexml_load_file($this->file) or die("Error: Cannot create object");
+
+		$o = $xml->Report;
+
+		foreach ($o as $oo) {
+				
+				$this->check_string($oo->Properties->CaptionML);
+				$xmlDataItems = $oo->DataItems->DataItem;
+
+				foreach($xmlDataItems as $xDI)
+				{
+					$this->check_string($xDI->Properties->ReqFilterHeadingML);
+					$b = $xDI->Sections->Section;
+
+					foreach ($b as $val) {
+						$c = $val->Controls->Control;
+						if (is_array($c) || is_object($c)){
+							foreach ($c as $val1) {
+								$this->check_string($val1->Properties->CaptionML);
 							}
 						}
-						insert($conn, $en_lang,$de_lang);
 					}
 				}
 			}
+	}
 
+	function check_string($captionML){
+		
+		if(strpos($captionML, 'DEU=') !== false && strpos($captionML, 'ENU=') !== false){
+			$langs = explode(";",$captionML);
+			$en_lang = "";
+			$de_lang = "";
+			foreach ($langs as $language) {
+				$text = trim($language);
+				if(strpos($text, 'DEU=') !== false){
+					$de_lang = substr($text, 4, strlen($text) - 4);
+				}else if(strpos($text, 'ENU=') !== false){
+					$en_lang = substr($text, 4, strlen($text) - 4);
+				}
+			}
+			$this->insert($en_lang,$de_lang);
+		}
+	}
+
+	function scrap_translated_ch_file(){
+		$xml          = simplexml_load_file($this->file) or die("Error: Cannot create object");
+		$xmlDataItems = $xml->file->body->group->{"trans-unit"};
+
+		foreach($xmlDataItems as $xDI)
+		{
+		    if ($xDI->target != "")
+		    {
+		    	echo $xDI->target."<br>";
+				$this->insert($xDI->source,$xDI->target);
+			}
+		}
+	}
+
+
+	function insert($english, $german){
+
+		$sql = "INSERT INTO translations (`en`, `de`) VALUES('".$english."', '".$german."')";
+
+		if ($this->conn->query($sql) === TRUE) {
+			echo "New record created successfully<br>\n";
+		} else {
+			echo "Error: " . $sql . "<br>" . $this->conn->error."\n";
 		}
 	}
 }
-
-function scrap_translated_ch_file($conn, $file){
-	$xml          = simplexml_load_file($file) or die("Error: Cannot create object");
-	$xmlDataItems = $xml->file->body->group->{"trans-unit"};
-
-	foreach($xmlDataItems as $xDI)
-	{
-	    if ($xDI->target != "")
-	    {
-	    	echo $xDI->target."<br>";
-			insert($conn, $xDI->source,$xDI->target);
-		}
-	}
-}
-
-
-function insert($conn,$english, $german){
-
-	$sql = "INSERT INTO translations (`en`, `de`) VALUES('".$english."', '".$german."')";
-
-	if ($conn->query($sql) === TRUE) {
-		echo "New record created successfully<br>\n";
-	} else {
-		echo "Error: " . $sql . "<br>" . $conn->error;
-	}
-}
-
-?>
